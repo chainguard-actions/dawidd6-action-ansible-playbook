@@ -1,0 +1,42 @@
+name: Test Ansible playbook with SSH key input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Ansible
+        run: |
+          pip install ansible
+
+      - name: Generate a temporary SSH key for testing
+        id: keygen
+        run: |
+          ssh-keygen -t rsa -b 2048 -f /tmp/test_key -N ""
+          KEY_CONTENT="$(cat /tmp/test_key)"
+          echo "key_content<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$KEY_CONTENT" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - id: action
+        uses: .
+        with:
+          playbook: tests/fixtures/playbooks/hello.yml
+          inventory: |
+            [local]
+            localhost ansible_connection=local
+          key: ${{ steps.keygen.outputs.key_content }}
+
+      - name: Assert output contains hello message
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          if echo "$ACTUAL" | grep -q "Hello from Ansible"; then
+            echo "PASS: output contains expected message"
+          else
+            echo "FAIL: expected output to contain 'Hello from Ansible'"
+            exit 1
+          fi

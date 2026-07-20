@@ -1,0 +1,51 @@
+name: Test ansible playbook with directory and extra options
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install ansible
+        run: pip install ansible
+
+      - name: Create playbook directory and playbook
+        run: |
+          mkdir -p /tmp/ansible-project
+          cat > /tmp/ansible-project/site.yml << 'EOF'
+          - name: Directory test playbook
+            hosts: localhost
+            connection: local
+            gather_facts: false
+            tasks:
+              - name: Print working directory
+                command: pwd
+                register: pwd_result
+              - name: Show result
+                debug:
+                  msg: "Working dir: {{ pwd_result.stdout }}"
+          EOF
+
+      - id: action
+        uses: .
+        with:
+          playbook: site.yml
+          directory: /tmp/ansible-project
+          options: "-v"
+
+      - name: Assert output contains verbose output indicator
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual output: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: output is empty"
+            exit 1
+          fi
+          if echo "$ACTUAL" | grep -q "ansible-project"; then
+            echo "PASS: output contains expected working directory"
+          else
+            echo "FAIL: output does not contain expected working directory path"
+            exit 1
+          fi

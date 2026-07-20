@@ -1,0 +1,13 @@
+{
+  "status": "bundled",
+  "entries": [
+    {
+      "path": "main.js",
+      "status": "bundled"
+    },
+    {
+      "path": "post.js",
+      "status": "bundled"
+    }
+  ]
+}

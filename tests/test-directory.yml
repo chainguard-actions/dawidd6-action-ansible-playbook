@@ -1,0 +1,35 @@
+name: Test Ansible playbook with directory input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Ansible
+        run: |
+          pip install ansible
+
+      - id: action
+        uses: .
+        with:
+          # Use the directory input to point to the fixtures/playbooks directory
+          # and reference the playbook by its filename only
+          playbook: hello.yml
+          directory: tests/fixtures/playbooks
+          inventory: |
+            [local]
+            localhost ansible_connection=local
+
+      - name: Assert output contains hello message
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          if echo "$ACTUAL" | grep -q "Hello from Ansible"; then
+            echo "PASS: output contains expected message when using directory input"
+          else
+            echo "FAIL: expected output to contain 'Hello from Ansible'"
+            exit 1
+          fi

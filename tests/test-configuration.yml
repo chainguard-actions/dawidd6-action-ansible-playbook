@@ -1,0 +1,47 @@
+name: Test Ansible playbook with custom configuration
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Ansible
+        run: |
+          pip install ansible
+
+      - id: action
+        uses: .
+        with:
+          playbook: tests/fixtures/playbooks/hello.yml
+          inventory: |
+            [local]
+            localhost ansible_connection=local
+          configuration: |
+            [defaults]
+            stdout_callback = default
+            nocows = true
+
+      - name: Assert output is non-empty (playbook ran with custom config)
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: output should not be empty"
+            exit 1
+          fi
+          echo "PASS: output is non-empty, playbook ran with custom configuration"
+
+      - name: Assert output contains expected task output
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          if echo "$ACTUAL" | grep -qi "Hello from Ansible\|ok=\|PLAY RECAP"; then
+            echo "PASS: output contains expected content"
+          else
+            echo "FAIL: expected output to contain playbook results"
+            exit 1
+          fi

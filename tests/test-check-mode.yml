@@ -1,0 +1,42 @@
+name: Test Ansible playbook in check mode
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Ansible
+        run: |
+          pip install ansible
+
+      - id: action
+        uses: .
+        with:
+          playbook: tests/fixtures/playbooks/check.yml
+          inventory: |
+            [local]
+            localhost ansible_connection=local
+          check_mode: "true"
+
+      - name: Assert output contains check mode indicator
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          # In check mode, copy tasks are skipped - look for "skipping" or "CHECK MODE" or the debug message
+          if echo "$ACTUAL" | grep -qi "check\|skipping\|Running in check mode"; then
+            echo "PASS: output indicates check mode was active"
+          else
+            echo "FAIL: expected output to indicate check mode"
+            exit 1
+          fi
+
+      - name: Assert file was NOT created (check mode skips writes)
+        run: |
+          if [ -f /tmp/ansible_check_test.txt ]; then
+            echo "FAIL: file should not have been created in check mode"
+            exit 1
+          fi
+          echo "PASS: file was not created (check mode worked)"

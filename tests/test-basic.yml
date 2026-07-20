@@ -1,0 +1,43 @@
+name: Test basic Ansible playbook execution
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Ansible
+        run: |
+          pip install ansible
+
+      - id: action
+        uses: .
+        with:
+          playbook: tests/fixtures/playbooks/hello.yml
+          inventory: |
+            [local]
+            localhost ansible_connection=local
+
+      - name: Assert output contains hello message
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          if echo "$ACTUAL" | grep -q "Hello from Ansible"; then
+            echo "PASS: output contains expected message"
+          else
+            echo "FAIL: expected output to contain 'Hello from Ansible'"
+            exit 1
+          fi
+
+      - name: Assert output is non-empty
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual length: ${#ACTUAL}"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: output should not be empty"
+            exit 1
+          fi
+          echo "PASS: output is non-empty"

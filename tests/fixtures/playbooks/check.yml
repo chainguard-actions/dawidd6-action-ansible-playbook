@@ -1,0 +1,12 @@
+- name: Check Mode Playbook
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Print check mode message
+      debug:
+        msg: "Running in check mode test"
+    - name: Create a temp file (skipped in check mode)
+      copy:
+        content: "test content"
+        dest: /tmp/ansible_check_test.txt

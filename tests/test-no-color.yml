@@ -1,0 +1,44 @@
+name: Test Ansible playbook with no_color option
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Ansible
+        run: |
+          pip install ansible
+
+      - id: action
+        uses: .
+        with:
+          playbook: tests/fixtures/playbooks/hello.yml
+          inventory: |
+            [local]
+            localhost ansible_connection=local
+          no_color: "true"
+
+      - name: Assert output does not contain ANSI color codes
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          # Check that output doesn't contain ANSI escape sequences (color codes start with ESC[)
+          if echo "$ACTUAL" | grep -qP '\x1b\['; then
+            echo "FAIL: output contains ANSI color codes but no_color was set to true"
+            exit 1
+          fi
+          echo "PASS: output does not contain ANSI color codes"
+
+      - name: Assert playbook ran successfully
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: output should not be empty"
+            exit 1
+          fi
+          echo "PASS: playbook ran and produced output"
