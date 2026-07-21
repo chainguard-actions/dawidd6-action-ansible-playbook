@@ -1,0 +1,105 @@
+name: Test Action
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  remote:
+    runs-on: ubuntu-latest
+    env:
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      SSH_PUBLIC_KEY: |-
+        ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIM5lWJTlb5uVieTv0Zivsh1U59dGXr1yDCbIzezeOCF2 noname
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Setup remote
+        run: |
+          mkdir "$HOME/.ssh"
+          echo "$SSH_PUBLIC_KEY" | tee "$HOME/.ssh/authorized_keys"
+          chmod 600 "$HOME/.ssh/authorized_keys"
+          echo 'SSH_KNOWN_HOSTS<<EOF' >> $GITHUB_ENV
+          ssh-keyscan localhost 2>/dev/null | tr -d '\r' | grep -v '^$' >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
+      - name: With everything
+        uses: ./
+        with:
+          playbook: playbook.yml
+          key: ${{env.SSH_PRIVATE_KEY}}
+          known_hosts: ${{env.SSH_KNOWN_HOSTS}}
+          directory: test
+          configuration: |
+            [defaults]
+            callbacks_enabled = ansible.posix.profile_tasks, ansible.posix.timer
+            stdout_callback = debug
+            nocows = false
+          vault_password: test
+          requirements: requirements.yml
+          inventory: |
+            [all]
+            localhost
+          options: |
+            -vv
+            -e docker_image=docker_url
+            -e docker_username=user
+            -e docker_password=pass
+            -e db_name=db_name
+            -e db_user=db_user
+            -e db_pass=db_pass
+  local:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: With check mode
+        uses: ./
+        with:
+          playbook: playbook.yml
+          directory: test
+          check_mode: true
+          options: --inventory hosts
+      - name: With custom ansible.cfg
+        uses: ./
+        with:
+          playbook: playbook.yml
+          directory: test
+          configuration: |
+            [defaults]
+            callbacks_enabled = ansible.posix.profile_tasks, ansible.posix.timer
+            stdout_callback = debug
+            nocows = false
+          options: --inventory hosts
+      - name: With requirements
+        uses: ./
+        with:
+          playbook: playbook.yml
+          directory: test
+          requirements: requirements.yml
+          options: --inventory hosts
+      - name: With requirements bundle
+        uses: ./
+        with:
+          playbook: playbook.yml
+          directory: test
+          requirements: requirements-bundle.yml
+          options: --inventory hosts
+      - name: With vault password
+        uses: ./
+        with:
+          playbook: playbook.yml
+          directory: test
+          vault_password: test
+          options: --inventory hosts
+      - name: With sudo
+        uses: ./
+        with:
+          playbook: playbook.yml
+          directory: test
+          sudo: true
+          options: --inventory hosts

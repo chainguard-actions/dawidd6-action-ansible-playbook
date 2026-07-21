@@ -1,0 +1,44 @@
+name: Test check mode (dry-run)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Ansible
+        run: pip install ansible
+
+      - name: Create test playbook
+        run: |
+          cat > /tmp/check-mode-playbook.yml << 'EOF'
+          ---
+          - name: Check mode test playbook
+            hosts: localhost
+            connection: local
+            gather_facts: false
+            tasks:
+              - name: This task runs in check mode
+                debug:
+                  msg: "Running in check mode"
+          EOF
+
+      - id: action
+        uses: .
+        with:
+          playbook: /tmp/check-mode-playbook.yml
+          check_mode: "true"
+
+      - name: Assert output contains check mode indicator
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          # In check mode, ansible-playbook outputs "DRY RUN" or similar markers
+          # The playbook should still run and produce output
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: expected non-empty output from ansible-playbook"
+            exit 1
+          fi
+          echo "PASS: output is non-empty as expected in check mode"

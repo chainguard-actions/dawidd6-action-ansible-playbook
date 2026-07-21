@@ -1,0 +1,44 @@
+name: Test ansible-playbook with known_hosts input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Ansible
+        run: pip install ansible
+
+      - name: Create test playbook
+        run: |
+          cat > /tmp/test-known-hosts-playbook.yml << 'EOF'
+          ---
+          - name: Test playbook with known_hosts
+            hosts: localhost
+            connection: local
+            gather_facts: false
+            tasks:
+              - name: Print known_hosts test message
+                debug:
+                  msg: "Known hosts input test passed!"
+          EOF
+
+      - id: action
+        uses: .
+        with:
+          playbook: /tmp/test-known-hosts-playbook.yml
+          known_hosts: |
+            github.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFXV1JHnsKgbLWNlhScqb2UmyRkQyytRLtL+38TGxkxCflmO+5Z8CSSNY7GidjMIZ7Q4zMjA2n1nGrlTDkzwDCsw+wqFPGQA1RQnc96aU+MSpivgDe9ozaZxKxjeKzA8077/MiPJMQUA0q6Aq8JwaT5uhm8ssdUI7uSqcSHFYDAibuygm3wU+meta4kEpkiKyu+xFMNSSYlmcDAqFqBMs2T8DjsgU5ISt4lFJeOF9Xk5trwuTq8R3QlShkkmERy6boP0Xe51bReVFX8wU=
+
+      - name: Assert output contains expected content
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          if echo "$ACTUAL" | grep -q "Known hosts input test passed!"; then
+            echo "PASS: output contains expected message"
+          else
+            echo "FAIL: expected output to contain 'Known hosts input test passed!'"
+            exit 1
+          fi

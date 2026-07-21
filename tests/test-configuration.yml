@@ -1,0 +1,47 @@
+name: Test ansible configuration file
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Ansible
+        run: pip install ansible
+
+      - name: Create test playbook
+        run: |
+          cat > /tmp/config-playbook.yml << 'EOF'
+          ---
+          - name: Configuration test playbook
+            hosts: localhost
+            connection: local
+            gather_facts: false
+            tasks:
+              - name: Print message
+                debug:
+                  msg: "Configuration test passed"
+          EOF
+
+      - id: action
+        uses: .
+        with:
+          playbook: /tmp/config-playbook.yml
+          configuration: |
+            [defaults]
+            host_key_checking = False
+            retry_files_enabled = False
+            stdout_callback = default
+
+      - name: Assert output contains expected message
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          if echo "$ACTUAL" | grep -q "Configuration test passed"; then
+            echo "PASS: output contains expected message"
+          else
+            echo "FAIL: expected output to contain 'Configuration test passed'"
+            exit 1
+          fi

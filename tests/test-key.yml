@@ -1,0 +1,46 @@
+name: Test ansible-playbook with SSH key input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Ansible
+        run: pip install ansible
+
+      - name: Create test playbook
+        run: |
+          cat > /tmp/test-key-playbook.yml << 'EOF'
+          ---
+          - name: Test playbook with key
+            hosts: localhost
+            connection: local
+            gather_facts: false
+            tasks:
+              - name: Print key test message
+                debug:
+                  msg: "Key input test passed!"
+          EOF
+
+      - id: action
+        uses: .
+        with:
+          playbook: /tmp/test-key-playbook.yml
+          key: |
+            -----BEGIN OPENSSH PRIVATE KEY-----
+            ZmFrZWtleWZvcnRlc3Rpbmcx
+            -----END OPENSSH PRIVATE KEY-----
+
+      - name: Assert output contains expected content
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          if echo "$ACTUAL" | grep -q "Key input test passed!"; then
+            echo "PASS: output contains expected message"
+          else
+            echo "FAIL: expected output to contain 'Key input test passed!'"
+            exit 1
+          fi

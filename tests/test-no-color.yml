@@ -1,0 +1,47 @@
+name: Test no_color option
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Ansible
+        run: pip install ansible
+
+      - name: Create test playbook
+        run: |
+          cat > /tmp/nocolor-playbook.yml << 'EOF'
+          ---
+          - name: No color test playbook
+            hosts: localhost
+            connection: local
+            gather_facts: false
+            tasks:
+              - name: Print message without color
+                debug:
+                  msg: "No color output test"
+          EOF
+
+      - id: action
+        uses: .
+        with:
+          playbook: /tmp/nocolor-playbook.yml
+          no_color: "true"
+
+      - name: Assert output is non-empty and contains expected message
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: expected non-empty output"
+            exit 1
+          fi
+          if echo "$ACTUAL" | grep -q "No color output test"; then
+            echo "PASS: output contains expected message without color codes"
+          else
+            echo "FAIL: expected output to contain 'No color output test'"
+            exit 1
+          fi

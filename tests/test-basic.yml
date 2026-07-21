@@ -1,0 +1,42 @@
+name: Test basic ansible-playbook execution
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Ansible
+        run: pip install ansible
+
+      - name: Create test playbook
+        run: |
+          cat > /tmp/test-playbook.yml << 'EOF'
+          ---
+          - name: Test playbook
+            hosts: localhost
+            connection: local
+            gather_facts: false
+            tasks:
+              - name: Print hello
+                debug:
+                  msg: "Hello from Ansible!"
+          EOF
+
+      - id: action
+        uses: .
+        with:
+          playbook: /tmp/test-playbook.yml
+
+      - name: Assert output contains expected content
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          if echo "$ACTUAL" | grep -q "Hello from Ansible!"; then
+            echo "PASS: output contains expected message"
+          else
+            echo "FAIL: expected output to contain 'Hello from Ansible!'"
+            exit 1
+          fi

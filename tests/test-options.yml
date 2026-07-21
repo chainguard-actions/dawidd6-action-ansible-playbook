@@ -1,0 +1,48 @@
+name: Test extra options passthrough
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Ansible
+        run: pip install ansible
+
+      - name: Create test playbook
+        run: |
+          cat > /tmp/options-playbook.yml << 'EOF'
+          ---
+          - name: Options test playbook
+            hosts: localhost
+            connection: local
+            gather_facts: false
+            tasks:
+              - name: Print verbose message
+                debug:
+                  msg: "Options test passed"
+          EOF
+
+      - id: action
+        uses: .
+        with:
+          playbook: /tmp/options-playbook.yml
+          options: "--verbose"
+
+      - name: Assert output contains verbose output
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: expected non-empty output"
+            exit 1
+          fi
+          # Verbose mode produces additional output like "TASK [Print verbose message]"
+          if echo "$ACTUAL" | grep -q "Options test passed"; then
+            echo "PASS: output contains expected message with verbose flag"
+          else
+            echo "FAIL: expected output to contain 'Options test passed'"
+            exit 1
+          fi
