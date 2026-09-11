@@ -1,4 +1,4 @@
-name: Test ansible-playbook with known_hosts input
+name: Test known_hosts input
 on:
   workflow_dispatch:
 jobs:
@@ -12,33 +12,48 @@ jobs:
 
       - name: Create test playbook
         run: |
-          cat > /tmp/test-known-hosts-playbook.yml << 'EOF'
+          cat > /tmp/known-hosts-playbook.yml << 'EOF'
           ---
-          - name: Test playbook with known_hosts
+          - name: Known hosts test playbook
             hosts: localhost
             connection: local
             gather_facts: false
             tasks:
-              - name: Print known_hosts test message
+              - name: Print known hosts test message
                 debug:
-                  msg: "Known hosts input test passed!"
+                  msg: "Known hosts test passed"
           EOF
+
+      - name: Get localhost SSH host key for known_hosts
+        run: |
+          ssh-keyscan localhost 2>/dev/null > /tmp/localhost_known_hosts || true
+          # Ensure we have something in the file even if keyscan fails
+          if [ ! -s /tmp/localhost_known_hosts ]; then
+            echo "localhost ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC0fake" > /tmp/localhost_known_hosts
+          fi
+          {
+            echo 'TEST_KNOWN_HOSTS<<EOF_KH'
+            cat /tmp/localhost_known_hosts
+            echo 'EOF_KH'
+          } >> "$GITHUB_ENV"
 
       - id: action
         uses: .
         with:
-          playbook: /tmp/test-known-hosts-playbook.yml
-          known_hosts: |
-            github.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFXV1JHnsKgbLWNlhScqb2UmyRkQyytRLtL+38TGxkxCflmO+5Z8CSSNY7GidjMIZ7Q4zMjA2n1nGrlTDkzwDCsw+wqFPGQA1RQnc96aU+MSpivgDe9ozaZxKxjeKzA8077/MiPJMQUA0q6Aq8JwaT5uhm8ssdUI7uSqcSHFYDAibuygm3wU+meta4kEpkiKyu+xFMNSSYlmcDAqFqBMs2T8DjsgU5ISt4lFJeOF9Xk5trwuTq8R3QlShkkmERy6boP0Xe51bReVFX8wU=
+          playbook: /tmp/known-hosts-playbook.yml
+          known_hosts: ${{ env.TEST_KNOWN_HOSTS }}
+          inventory: |
+            [local]
+            localhost ansible_connection=local
 
-      - name: Assert output contains expected content
+      - name: Assert output contains expected message
         env:
           ACTUAL: ${{ steps.action.outputs.output }}
         run: |
           echo "actual: $ACTUAL"
-          if echo "$ACTUAL" | grep -q "Known hosts input test passed!"; then
+          if echo "$ACTUAL" | grep -q "Known hosts test passed"; then
             echo "PASS: output contains expected message"
           else
-            echo "FAIL: expected output to contain 'Known hosts input test passed!'"
+            echo "FAIL: expected output to contain 'Known hosts test passed'"
             exit 1
           fi

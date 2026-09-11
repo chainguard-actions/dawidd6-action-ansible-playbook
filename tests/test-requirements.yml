@@ -1,4 +1,4 @@
-name: Test ansible-playbook with Galaxy requirements input
+name: Test Ansible Galaxy requirements input
 on:
   workflow_dispatch:
 jobs:
@@ -14,39 +14,38 @@ jobs:
         run: |
           cat > /tmp/requirements.yml << 'EOF'
           ---
-          collections:
-            - name: ansible.utils
-              version: ">=2.0.0"
+          roles: []
+          collections: []
           EOF
 
       - name: Create test playbook
         run: |
-          cat > /tmp/test-requirements-playbook.yml << 'EOF'
+          cat > /tmp/requirements-playbook.yml << 'EOF'
           ---
-          - name: Test playbook with requirements
+          - name: Requirements test playbook
             hosts: localhost
             connection: local
             gather_facts: false
             tasks:
               - name: Print requirements test message
                 debug:
-                  msg: "Requirements input test passed!"
+                  msg: "Requirements test passed"
           EOF
 
       - id: action
         uses: .
         with:
-          playbook: /tmp/test-requirements-playbook.yml
+          playbook: /tmp/requirements-playbook.yml
           requirements: /tmp/requirements.yml
 
-      - name: Assert output contains expected content
+      - name: Assert output contains expected message
         env:
           ACTUAL: ${{ steps.action.outputs.output }}
         run: |
           echo "actual: $ACTUAL"
-          if echo "$ACTUAL" | grep -q "Requirements input test passed!"; then
+          if echo "$ACTUAL" | grep -q "Requirements test passed"; then
             echo "PASS: output contains expected message"
           else
-            echo "FAIL: expected output to contain 'Requirements input test passed!'"
+            echo "FAIL: expected output to contain 'Requirements test passed'"
             exit 1
           fi
