@@ -11,23 +11,21 @@ jobs:
         run: |
           pip install ansible
 
-      - name: Generate a temporary SSH key for testing
-        id: keygen
+      - name: Generate SSH key pair for testing
         run: |
-          ssh-keygen -t rsa -b 2048 -f /tmp/test_key -N ""
-          KEY_CONTENT="$(cat /tmp/test_key)"
-          echo "key_content<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$KEY_CONTENT" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          ssh-keygen -t ed25519 -f /tmp/test_key -N "" -C "test@example.com"
+          echo "SSH_PRIVATE_KEY<<EOF" >> $GITHUB_ENV
+          cat /tmp/test_key >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - id: action
         uses: .
         with:
           playbook: tests/fixtures/playbooks/hello.yml
+          key: ${{ env.SSH_PRIVATE_KEY }}
           inventory: |
             [local]
             localhost ansible_connection=local
-          key: ${{ steps.keygen.outputs.key_content }}
 
       - name: Assert output contains hello message
         env:
@@ -40,3 +38,14 @@ jobs:
             echo "FAIL: expected output to contain 'Hello from Ansible'"
             exit 1
           fi
+
+      - name: Assert output is non-empty
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual length: ${#ACTUAL}"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: output should not be empty"
+            exit 1
+          fi
+          echo "PASS: output is non-empty"

@@ -1,0 +1,10 @@
+- name: Vault Test Playbook
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    secret_message: "Hello from vault test"
+  tasks:
+    - name: Print vault test message
+      debug:
+        msg: "{{ secret_message }}"

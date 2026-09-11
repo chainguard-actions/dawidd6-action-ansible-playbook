@@ -11,15 +11,26 @@ jobs:
         run: |
           pip install ansible
 
+      - name: Generate known_hosts entry for testing
+        run: |
+          # Generate a sample known_hosts entry (using localhost's key if available, else a placeholder)
+          ssh-keyscan -H localhost 2>/dev/null > /tmp/known_hosts_content || true
+          if [ ! -s /tmp/known_hosts_content ]; then
+            # Fallback: use a dummy known_hosts entry
+            echo "localhost ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > /tmp/known_hosts_content
+          fi
+          echo "KNOWN_HOSTS_CONTENT<<EOF" >> $GITHUB_ENV
+          cat /tmp/known_hosts_content >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
       - id: action
         uses: .
         with:
           playbook: tests/fixtures/playbooks/hello.yml
+          known_hosts: ${{ env.KNOWN_HOSTS_CONTENT }}
           inventory: |
             [local]
             localhost ansible_connection=local
-          known_hosts: |
-            github.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFV+uricgeBSAmsGh+vMKyaQ==
 
       - name: Assert output contains hello message
         env:
@@ -32,3 +43,14 @@ jobs:
             echo "FAIL: expected output to contain 'Hello from Ansible'"
             exit 1
           fi
+
+      - name: Assert output is non-empty
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual length: ${#ACTUAL}"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: output should not be empty"
+            exit 1
+          fi
+          echo "PASS: output is non-empty"

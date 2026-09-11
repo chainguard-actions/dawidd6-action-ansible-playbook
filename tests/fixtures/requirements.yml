@@ -1,3 +1,4 @@
----
+# Minimal Ansible Galaxy requirements file for testing
+# No roles or collections needed for local playbook tests
 roles: []
 collections: []

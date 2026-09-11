@@ -1,4 +1,4 @@
-name: Test Ansible playbook with Galaxy requirements input
+name: Test Ansible playbook with Galaxy requirements
 on:
   workflow_dispatch:
 jobs:
@@ -31,3 +31,14 @@ jobs:
             echo "FAIL: expected output to contain 'Hello from Ansible'"
             exit 1
           fi
+
+      - name: Assert output is non-empty
+        env:
+          ACTUAL: ${{ steps.action.outputs.output }}
+        run: |
+          echo "actual length: ${#ACTUAL}"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: output should not be empty"
+            exit 1
+          fi
+          echo "PASS: output is non-empty"
